@@ -45,6 +45,7 @@ def evaluate(model, X, y):
 # ---------------- sidebar ----------------
 st.sidebar.title("🛒 Controls")
 uploaded = st.sidebar.file_uploader("Upload test CSV (features + Revenue)", type="csv")
+use_sample = st.sidebar.checkbox("Use the bundled test_data.csv instead", value=True)
 choice = st.sidebar.selectbox("Choose a model", list(MODEL_FILES))
 compare_all = st.sidebar.checkbox("Also compare all 5 models", value=True)
 st.sidebar.caption("Models are pre-trained and loaded from /model. Nothing is retrained on your upload.")
@@ -54,11 +55,12 @@ st.title("Online Shopper Purchase-Intent Predictor")
 st.write("Upload held-out session data, pick a classifier, and see how well it "
          "predicts whether a visitor will make a purchase (`Revenue`).")
 
-if uploaded is None:
-    st.info("👈 Upload a CSV in the sidebar to begin. You can use `test_data.csv` from the repo.")
+if uploaded is None and not use_sample:
+    st.info("👈 Upload a CSV in the sidebar to begin, or tick the sample-data box.")
     st.stop()
 
-data = pd.read_csv(uploaded)
+source = uploaded if uploaded is not None else os.path.join(BASE, "test_data.csv")
+data = pd.read_csv(source)
 if TARGET not in data.columns:
     st.error(f"The uploaded file must contain the target column `{TARGET}`.")
     st.stop()
@@ -67,7 +69,7 @@ data["Weekend"] = data["Weekend"].astype(int)
 y = data[TARGET].astype(int)
 X = data.drop(columns=TARGET)
 
-with st.expander(f"Preview of uploaded data ({len(data):,} rows)"):
+with st.expander(f"Preview of data used ({len(data):,} rows)"):
     st.dataframe(data.head(20))
     st.write("Class balance:", y.value_counts().rename({0: "No purchase", 1: "Purchase"}).to_dict())
 
@@ -111,7 +113,7 @@ st.dataframe(pd.DataFrame(report).T.round(3))
 
 # ---------------- comparison ----------------
 if compare_all:
-    st.subheader("All models on this file")
+    st.subheader("All models on this data")
     rows = []
     for name in MODEL_FILES:
         _, _, s = evaluate(load_model(name), X, y)
